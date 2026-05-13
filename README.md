@@ -1,128 +1,112 @@
-# 🧰 Claude Skills for RAs: Replication & Research Workflows
+# Super-RA: Claude Skills for Empirical Research
 
-Actively developed and maintained.  
-A collection of Claude skills that make research assistant work faster, more reproducible, and easier to train across projects.
-
----
-
-## 🎯 What this repo is for
-
-This repo focuses on Claude skills - prompts and configurations you can load into Claude Code - that help RAs:
-
-- Build and maintain replication packages.
-- Structure and document empirical projects.
-- Run analysis, QA, and documentation steps in a consistent way.
-
-You describe the task. The skill guides Claude through planning, implementing, checking, and documenting the work.
+A collection of Claude Code skills for research workflows in economics, political science, and related fields. Each skill defines a structured, multi-phase agent behavior for a specific research task. Skills are designed to be reusable across projects and explicit about what they will and will not do.
 
 ---
 
-## 🧩 What is a “Claude skill” here?
+## What is a Claude Skill?
 
-In this repo, a skill is:
+A Claude skill is a markdown file that instructs Claude Code to carry out a bounded, well-defined task. When invoked with `/skill-name`, Claude Code reads the skill definition and executes the task in structured phases, pausing for user approval at key decision points.
 
-- A focused Claude configuration (system prompts, rules, patterns).
-- Designed for a specific RA task, such as:
-  - Creating a replication package.
-  - Auditing code and reproducibility.
-  - Drafting documentation or referee-facing notes.
-- Written so that RAs can invoke it with a short natural language description of their project.
-
-Each skill is meant to be:
-
-- **Reusable** across projects.
-- **Opinionated** about best practices.
-- **Transparent** about what it will and will not do.
+Skills in this repository are opinionated about best practices. They are not general-purpose prompts; they enforce standards for reproducibility, data integrity, and documentation.
 
 ---
 
-## 📦 First skills in this repo
+## Prerequisites
 
-Planned initial skills (names and details may change as you iterate):
-
-- **/create-replication-package**  
-  Proposes a project structure, organizes raw / intermediate / final data, and drafts instructions for running all code from scratch.
-
-- **/analyze-dataset**  
-  Helps RAs move from a high-level research question to a concrete analysis plan, with checks for identification, specification, and diagnostics.
-
-- **/audit-reproducibility**  
-  Reviews an existing project for missing pieces in the replication chain - scripts, seeds, data transformations, and documentation.
-
-- **/draft-ra-notes**  
-  Summarizes what was done in a project (and why) so PIs, coauthors, and future RAs can quickly understand the workflow.
-
-Update this list as you add or rename skills.
+- [Claude Code](https://claude.ai/code), installed and authenticated
+- The project repository or folder open in Claude Code
+- Access to the input files described in each skill (listed below)
 
 ---
 
-## 🚀 How to use these skills
+## Installation
 
-1. **Open Claude Code** with your project repo or folder in context.
-2. **Load the relevant skill**:
-   - Paste the skill prompt into a new session, or
-   - Use your own skill-loading setup if you have one.
-3. **Describe your task** in 2–3 sentences:
-   - What project you are working on.
-   - Where the data and code live.
-   - What output you need (replication package, analysis plan, QA, documentation).
-4. **Let the skill run**:
-   - Claude will propose a plan, ask clarifying questions if needed, and execute the steps it is configured for.
-5. **Commit and iterate**:
-   - Review the changes locally.
-   - Commit only what you are comfortable owning in version control.
+Clone this repository or copy the `.claude/skills/` directory into your project:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/super-RA.git
+```
+
+If you are adding skills to an existing project, copy the relevant `.md` file from `.claude/skills/` into the `.claude/skills/` directory of your project. Claude Code will detect the skill automatically.
 
 ---
 
-## 🧪 Example workflows
+## Available Skills
 
-Some ways an RA might use this repo:
+### `/replication-repo`
 
-- You receive a partially organized project folder and need a journal-ready replication package.  
-  Use `/create-replication-package` to propose structure, scripts, and documentation.
+Builds a clean, self-contained replication repository from an existing empirical project. The skill enforces the principle that raw data values are never modified: only unused variables are removed, and all transformations happen in cleaning scripts.
 
-- You inherit a codebase with unclear diagnostics and robustness checks.  
-  Use `/analyze-dataset` to sketch an analysis and diagnostics plan.
+**What it produces:**
 
-- You are preparing a project for sharing with a coauthor or external collaborator.  
-  Use `/audit-reproducibility` to identify missing steps in the pipeline.
+| Output | Description |
+|--------|-------------|
+| `data_inventory.pdf` | Documents every data file, variable retained, variable removed, and the paper output each variable feeds |
+| Pruned raw data files | Raw files stripped of columns not referenced by any script |
+| Standardized code | All scripts use a single `$root` global; outputs write to `output/tables/` and `output/figures/` |
+| `master.do` | Single entry point that runs the full pipeline from a clean state |
+| `README.md` | Replication instructions, software requirements, data access notes, and output map |
 
-Replace these with concrete examples from your own projects over time.
+**Required inputs:**
 
----
+- The paper's LaTeX source file (`.tex`)
+- A folder of tables (e.g., `tabs/`)
+- A folder of figures (e.g., `figs/`)
+- The code directory with analysis scripts (`.do`, `.R`, `.py`)
 
-## 🗺️ Roadmap
+**How to invoke:**
 
-Tentative roadmap for this repo:
+1. Open Claude Code with the project repository in context.
+2. Run `/replication-repo`.
+3. Claude will ask for: (a) the code directory path, (b) the paper title and journal, and (c) whether any data files are restricted-access.
+4. Claude will report completion of each phase before starting the next. Phases that require judgment calls will pause for user input.
 
-- More skills for:
-  - Data validation and consistency checks.
-  - Code style and review checklists.
-  - Advanced replication workflows (multi-country, multi-wave data).
-- Example configurations for:
-  - Stata-heavy projects.
-  - R / Python pipelines.
-  - Mixed-tool environments typical in policy and development work.
+**Phases executed:**
 
-As you test these skills with RAs, update the roadmap to reflect what actually works.
+1. Read all code and build a complete variable map: raw file to variable to clean variable to paper output
+2. Produce `data_inventory.qmd` and compile `data_inventory.pdf`
+3. Prune raw data files to the minimum required variable set
+4. Standardize all script paths and output directories
+5. Build `master.do`
+6. Write `README.md`
+7. Verify end-to-end reproducibility
 
----
-
-## 🤝 Contributing
-
-Contributions and suggestions are welcome.
-
-- **Issues**  
-  Use GitHub Issues to report bugs, request new skills, or suggest changes to existing prompts.
-
-- **Pull requests**  
-  Add a new skill, refine instructions, or contribute examples of how you used these skills in real projects.
-
-- **Documentation**  
-  If you adapt a skill to a new institutional context or data environment, consider documenting it so others can learn from your setup.
+See [`.claude/skills/replication-repo.md`](.claude/skills/replication-repo.md) for the full skill definition, including rules, edge cases, and pitfalls.
 
 ---
 
-## 📜 License
+## Repository Structure
 
-Add your preferred license here (for example: MIT, GPL, or a custom license) so others know how they can use, modify, and distribute these Claude skills.
+```
+super-RA/
+├── README.md
+├── LICENSE
+└── .claude/
+    └── skills/
+        └── replication-repo.md
+```
+
+---
+
+## Contributing
+
+Contributions of new skills and refinements to existing ones are welcome.
+
+**To propose a new skill:**
+1. Open a GitHub Issue describing the research task the skill addresses, the inputs it requires, and the outputs it produces.
+2. Submit a pull request with a new `.md` file in `.claude/skills/`.
+
+**Standards for new skills:**
+
+- Scope the skill to a single, well-defined task.
+- Structure execution as explicit, ordered phases.
+- State clearly what the skill enforces and what decisions remain with the user.
+- List all required inputs and expected outputs.
+- Document edge cases and known pitfalls.
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).
