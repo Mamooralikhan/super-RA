@@ -38,7 +38,27 @@ OpenAI skills are portable across products, but they do not automatically sync a
 
 The core safeguard is non-negotiable: if a raw variable is retained, its values and name must not be changed. All transformations belong in cleaning scripts that write to `data/clean/`.
 
-Expected outputs include:
+#### Prerequisites
+
+The following must be present in the project folder before the skill starts. If the paper `.tex` file is absent, the skill halts immediately and asks for it — the skill cannot identify target tables and figures without the paper source.
+
+| File or folder | Why it is required |
+|:---|:---|
+| Code scripts (`.do`, `.R`, `.py`) | Phase 1 variable map cannot be built without them. |
+| **Paper `.tex` source file** | Required to identify which tables and figures the paper targets. The skill halts if this is missing. |
+| Output tables and figures | Phase 7 end-to-end verification checks that every paper output is reproduced. |
+| `data/raw/` files | Phases 1 and 3 variable tracing and pruning require the raw data to be present. |
+
+#### Common failure modes
+
+| Symptom | Likely cause |
+|:---|:---|
+| Skill cannot identify which figures to verify | `.tex` file is missing or not in the expected folder. Provide the paper source and re-invoke. |
+| Phase 3 fails to find expected variables | Raw data files are missing or the code directory does not match the data directory. |
+| `data_inventory.pdf` fails to compile | LaTeX installation is missing or font paths differ from the defaults. Adjust the font block in the `.qmd` file for the local TeX Live path. |
+| Phase 7 reports no outputs | Restricted data may be missing. Check that pre-computed skip guards are in place for cleaning scripts that depend on restricted sources. |
+
+#### Expected outputs
 
 - `data_inventory.qmd` and `data_inventory.pdf`
 - pruned raw files with unused variables removed
@@ -69,7 +89,28 @@ The workbook is a review artifact. It is meant to help the user inspect:
 - working papers that may since have journal versions
 - missing or incorrect year, volume, issue, page, article number, DOI, or venue metadata
 
-Expected outputs include:
+#### Prerequisites
+
+The following must be present in the paper folder before the skill starts. If Step 1 compilation fails for any reason, the skill halts and reports the exact error rather than attempting to extract references from broken output.
+
+| File | Why it is required |
+|:---|:---|
+| **Paper `.tex` source file** | Step 1 compiles the paper to extract the rendered bibliography. The skill halts if this is missing. |
+| **`.bib` file(s)** | Compilation fails without the bibliography source. |
+| Bibliography style files (`.bst`, `.sty`) | Required for correct compilation. The skill attempts to compile and halts if style files are missing. |
+| Working LaTeX installation (`xelatex` or `pdflatex`) | The skill cannot run Step 1 without a local LaTeX environment. |
+| Browser session access | Required for Steps 3 through 5 source-page verification. If unavailable, linked-reference checking is skipped and flagged to the user. |
+
+#### Common failure modes
+
+| Symptom | Likely cause |
+|:---|:---|
+| Step 1 compile fails | Missing `.bib` or style file. Run `xelatex` manually, read the error log, and confirm all input files are in the folder. |
+| References extracted from `.bib` instead of compiled output | The skill defaulted to the raw `.bib` because the compile failed silently. Always resolve compile errors before proceeding. |
+| Browser check fails on every reference | Institutional proxy or VPN is not active. Browser session must be authenticated if the paper cites journal-paywalled sources. |
+| Rows remain blank in column B after Phase 1 | Human-verification gate was not clicked through. Batch the unresolved tabs and ask the user to clear them. |
+
+#### Expected outputs
 
 - an Excel workbook ordered to match the paper bibliography
 - a comparison column showing the source-page reference
@@ -167,7 +208,7 @@ To propose a new skill, open an issue with:
 
 Developed and maintained by [Mamoor Ali Khan](https://mamooralikhan.com).
 
-Last updated: May 29, 2026
+Last updated: June 3, 2026
 
 ## License
 

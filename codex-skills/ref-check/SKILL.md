@@ -46,6 +46,20 @@ Use it when the user wants any of the following:
 5. Keep direct source-page verification separate from broader discovery work.
 6. For high-stakes review work, do not silently best-guess an ambiguous citation as correct.
 
+## Required Files
+
+Before starting, confirm the following are present in the paper folder. If any required item is missing, the skill must halt and ask the user to provide it before continuing.
+
+| File | Required for | What to do if missing |
+|:---|:---|:---|
+| Paper `.tex` source file | Step 1 compile and reference extraction | Halt. Cannot proceed without the source. Ask user to provide it. |
+| `.bib` file(s) referenced by the paper | Step 1 compile | Halt. Compilation will fail without the bibliography source. Ask user to locate or provide them. |
+| Bibliography style file(s) (`.bst`, `.sty`) | Step 1 compile | Attempt compile. If it fails due to missing style files, report the error, halt, and ask user to provide them. |
+| Working LaTeX installation with `xelatex` or `pdflatex` | Step 1 compile | Halt. Report that LaTeX is not available and the skill cannot run Step 1. |
+| Browser session access | Steps 3 through 5 source-page verification | Do not halt. Flag to the user that linked-reference checking requires browser access and will be skipped if unavailable. |
+
+If Step 1 compilation fails for any reason, do not attempt to extract references from a partial or broken output. Report the exact LaTeX error, halt, and ask the user to resolve the compile issue before continuing.
+
 ## Workflow
 
 ### Step 1: Compile and Locate the Rendered References
@@ -192,13 +206,15 @@ Recommended columns:
 
 When the user gives a paper folder:
 
-1. compile
-2. extract compiled references
-3. build workbook
-4. Phase 1 linked rows
-5. pause for human-verification gates
-6. Phase 2 missing links and incorrect links
-7. add review columns and polish the workbook
+1. ask for the paper folder path, preferred workbook output path, whether split bibliographies exist, and whether working-paper rows should be checked for later journal publication
+2. confirm Required Files check passes
+3. compile
+4. extract compiled references
+5. build workbook
+6. Phase 1 linked rows
+7. pause for human-verification gates
+8. Phase 2 missing links and incorrect links
+9. add review columns and polish the workbook
 
 ## Good Final Reporting
 

@@ -36,6 +36,20 @@ This is a conservative workflow. The agent should not silently "fix" the bibliog
 
 ---
 
+## Required Files
+
+Before starting, confirm the following are present in the paper folder. If any required item is missing, the skill must halt and ask the user to provide it before continuing.
+
+| File | Required for | What to do if missing |
+|:---|:---|:---|
+| Paper `.tex` source file | Step 1 compile and reference extraction | Halt. Cannot proceed without the source. Ask user to provide it. |
+| `.bib` file(s) referenced by the paper | Step 1 compile | Halt. Compilation will fail without the bibliography source. Ask user to locate or provide them. |
+| Bibliography style file(s) (`.bst`, `.sty`) | Step 1 compile | Attempt compile. If it fails due to missing style files, report the error, halt, and ask user to provide them. |
+| Working LaTeX installation with `xelatex` or `pdflatex` | Step 1 compile | Halt. Report that LaTeX is not available and the skill cannot run Step 1. |
+| Browser session access | Steps 3 through 5 source-page verification | Do not halt. Flag to the user that linked-reference checking requires browser access and will be skipped if unavailable. |
+
+If Step 1 compilation fails for any reason, do not attempt to extract references from a partial or broken output. Report the exact LaTeX error, halt, and ask the user to resolve the compile issue before continuing.
+
 ## Required Inputs
 
 Ask the user for:
@@ -45,7 +59,7 @@ Ask the user for:
 3. Whether the paper has appendices or split bibliographies that must be checked separately
 4. Whether the user wants working-paper rows checked for later journal publication
 
-Then begin Step 1.
+Confirm the Required Files check passes. Then begin Step 1.
 
 ---
 

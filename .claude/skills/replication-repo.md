@@ -21,6 +21,26 @@ You are building a clean, self-contained replication repository for an academic 
 
 ---
 
+## Required Files
+
+Before starting, confirm the following are present in the project folder. If any required item is missing, the skill must halt and ask the user to provide it before continuing.
+
+| File or folder | Required for | What to do if missing |
+|:---|:---|:---|
+| Code scripts (`.do`, `.R`, `.py`) | Phase 1 variable map | Halt. Ask user to provide the project code directory. |
+| Paper `.tex` source file | Identifying target tables and figures by their exact labels | Halt before Phase 1. The skill cannot know which outputs to target without the paper source. |
+| Existing output tables and figures | Phase 7 end-to-end verification | Note the absence and flag that Phase 7 verification will be incomplete. |
+| `data/raw/` files | Phases 1 and 3 variable tracing and pruning | Halt. Ask user to provide raw data before proceeding. |
+| `.bib` or bibliography file | Phase 6 README data provenance note | Note the absence; do not halt. |
+
+If the paper `.tex` file is absent, stop immediately after this check and say:
+
+> "The paper `.tex` source file is required to identify which tables and figures the paper targets. Please provide the `.tex` file or its path before the skill continues."
+
+Do not proceed to Phase 1 until the `.tex` file is confirmed present and readable.
+
+---
+
 ## Phase 1 — Read All Code and Build the Variable Map
 
 Before touching any data file, read every script in the repository.
@@ -241,8 +261,12 @@ repo_root/
 ## Invocation
 
 When this skill is invoked, ask the user for:
-1. The path to the existing code directory (or confirm the current working directory contains the repo)
-2. The paper title and journal (for README and data_inventory header)
-3. Whether any data files are restricted-access (DHS, MICS, IPUMS, etc.)
 
-Then begin Phase 1. Report completion of each phase before starting the next. If you encounter a decision that requires user judgement (e.g. a variable that appears in one table but might be derivable from another), pause and ask before proceeding.
+1. The path to the project folder (or confirm the current working directory contains the repo)
+2. The paper title and journal, for the README and `data_inventory` header
+3. Whether any data files are restricted-access (DHS, MICS, IPUMS, etc.)
+4. Confirmation that the paper `.tex` source file is present and its location within the project folder
+
+Then run the Required Files check. If the check passes, begin Phase 1.
+
+Report completion of each phase before starting the next. If you encounter a decision that requires user judgment, such as a variable that appears in one table but might be derivable from another, pause and ask before proceeding.
