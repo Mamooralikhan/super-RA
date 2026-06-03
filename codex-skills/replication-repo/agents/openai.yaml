@@ -1,0 +1,7 @@
+interface:
+  display_name: "Replication Repo"
+  short_description: "Build a reproducible replication package"
+  default_prompt: "Use $replication-repo to convert this empirical project into a clean replication repository with a full data inventory and reproducibility checks."
+
+policy:
+  allow_implicit_invocation: true

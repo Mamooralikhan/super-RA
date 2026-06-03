@@ -1,142 +1,173 @@
 # Super-RA
 
-A collection of Claude Code skills for research assistant work in empirical social science. Each skill defines a structured, multi-phase agent that executes a specific research task with explicit standards, ordered phases, and user-controlled checkpoints.
+`super-RA` is a public repository of research-assistant skills for empirical social science. The repository is designed for academics, research staff, and policy teams who need repeatable workflows for replication, documentation, and reference review.
 
-Skills are designed for the workflows of research assistants in economics, political science, development studies, and related fields, including projects with foundations, multilateral institutions, and policy organizations.
+The skills in this repository are strict by design. They are not generic prompts. Each skill is written as a bounded workflow with explicit inputs, ordered phases, stop conditions, outputs, and verification steps. The goal is to make serious analytical work more reproducible and less dependent on ad hoc prompting.
 
----
+## Platform Support
 
-## What is a Claude Skill?
+This repository now ships skills for both Claude and Codex.
 
-A Claude skill is a markdown file that instructs Claude Code to carry out a bounded, well-defined task. When you type `/skill-name` in Claude Code, the agent reads the skill definition and executes the task in structured phases, pausing for your approval at each decision point.
+| Platform | Skill location | Notes |
+|----------|----------------|-------|
+| Claude | `.claude/skills/` | Claude can read project-local skills from this folder when the repository is the working directory. |
+| Codex | `codex-skills/` | The repository includes Codex-native skill folders. For the most reliable setup, install them into your Codex skill library with `scripts/install_codex_skills.sh`. |
 
-Skills in this repository are opinionated. They enforce standards for reproducibility, data integrity, analytical rigor, and documentation. They are not general-purpose prompts.
+OpenAI skills are portable across products, but they do not automatically sync across products. This repository therefore keeps paired Claude and Codex versions side by side so each platform has a native, readable implementation.
 
----
+## Available Skills
 
-## Installation
+| Skill | Claude | Codex | What it does |
+|-------|--------|-------|--------------|
+| `replication-repo` | Yes | Yes | Builds a clean, self-contained replication repository from an existing empirical project without changing retained raw data values. |
+| `ref-check` | Yes | Yes | Checks compiled paper references against source pages in the user's browser session and produces a review workbook for user verification. |
 
-Clone this repository into your project, or copy the `.claude/skills/` directory into an existing project:
+## Skill Details
+
+### `replication-repo`
+
+`replication-repo` turns an existing paper project into a clean replication package. The skill is procedural and should not be treated as a loose suggestion. It works through a fixed sequence:
+
+1. Read all code and build the full raw-to-clean-to-output variable map.
+2. Write and compile a `data_inventory` document.
+3. Prune raw data files only by deleting variables proven to be unused.
+4. Standardize code paths and output directories.
+5. Build `master.do`.
+6. Write project-level replication documentation.
+7. Verify end-to-end reproducibility.
+
+The core safeguard is non-negotiable: if a raw variable is retained, its values and name must not be changed. All transformations belong in cleaning scripts that write to `data/clean/`.
+
+Expected outputs include:
+
+- `data_inventory.qmd` and `data_inventory.pdf`
+- pruned raw files with unused variables removed
+- standardized scripts using a single project root
+- `master.do`
+- replication instructions and output map in the target repository README
+
+Skill files:
+
+- Claude: [`.claude/skills/replication-repo.md`](.claude/skills/replication-repo.md)
+- Codex: [`codex-skills/replication-repo/SKILL.md`](codex-skills/replication-repo/SKILL.md)
+
+### `ref-check`
+
+`ref-check` is a conservative reference-audit skill. It does not silently "fix" a bibliography. Instead, it compiles the paper, treats the compiled bibliography as the source of truth for what the paper currently cites, and checks those citations against actual source pages.
+
+The workflow is browser-based:
+
+- the agent uses the user's browser session to open DOI and URL targets
+- the agent reads the source page, not just search snippets
+- the agent records what the source page says in a workbook
+- the user remains the final verifier for ambiguous or substantive bibliographic questions
+
+The workbook is a review artifact. It is meant to help the user inspect:
+
+- incorrect DOI or URL links
+- possible hallucinated references
+- working papers that may since have journal versions
+- missing or incorrect year, volume, issue, page, article number, DOI, or venue metadata
+
+Expected outputs include:
+
+- an Excel workbook ordered to match the paper bibliography
+- a comparison column showing the source-page reference
+- issue flags for incorrect links or unresolved cases
+- a short final report listing rows that still require human follow-up
+
+Skill files:
+
+- Claude: [`.claude/skills/ref-check.md`](.claude/skills/ref-check.md)
+- Codex: [`codex-skills/ref-check/SKILL.md`](codex-skills/ref-check/SKILL.md)
+
+## Installation and Use
+
+### Claude
+
+Clone the repository into the project you want Claude to work on:
 
 ```bash
 git clone https://github.com/YOUR-USERNAME/super-RA.git
 ```
 
-Claude Code detects skill files in `.claude/skills/` automatically. No additional configuration is required.
+Claude reads skills from `.claude/skills/` when the repository is the working folder.
 
----
+### Codex
 
-## Skills
+The Codex skills in this repository live in `codex-skills/` and follow the standard `SKILL.md` layout. For the most reliable installation, run:
 
-Skills are organized by research workflow phase. Each skill entry lists its status, required inputs, and primary outputs.
-
-### Data and Replication
-
-| Skill | Status | What it does |
-|-------|--------|--------------|
-| [`/replication-repo`](#replication-repo) | Available | Builds a complete, self-contained replication repository from an existing empirical project |
-
-### Code and Analysis
-
-| Skill | Status | What it does |
-|-------|--------|--------------|
-| `/coding-agent` | Planned | Reviews and standardizes analysis code for reproducibility, path discipline, and output consistency |
-
-### Literature
-
-| Skill | Status | What it does |
-|-------|--------|--------------|
-| `/lit-review` | Planned | Synthesizes a targeted literature review from a set of papers, structured around a research question |
-
-### Writing and Review
-
-| Skill | Status | What it does |
-|-------|--------|--------------|
-| `/peer-review` | Planned | Produces a structured academic referee report for a submitted manuscript |
-
----
-
-## Skill Reference
-
-### `/replication-repo`
-
-Builds a clean, self-contained replication repository from an existing empirical project. The skill enforces that raw data values are never modified: only unused variables are removed, and all transformations happen in cleaning scripts that write to `data/clean/`.
-
-**Required inputs:**
-- Paper LaTeX source file (`.tex`)
-- Tables folder (e.g., `tabs/`)
-- Figures folder (e.g., `figs/`)
-- Code directory containing analysis scripts (`.do`, `.R`, `.py`)
-
-**Outputs:**
-
-| Output | Description |
-|--------|-------------|
-| `data_inventory.pdf` | Documents every raw and clean data file, variables retained and removed, and which paper output each variable feeds |
-| Pruned raw data files | Raw files with unreferenced columns removed; values never changed |
-| Standardized scripts | All paths use a single `$root` global; outputs write to `output/tables/` and `output/figures/` |
-| `master.do` | Single entry point that reproduces all results from a clean state |
-| `README.md` | Replication instructions, software requirements, data access notes, and full output map |
-
-**Phases:**
-1. Read all code; build complete variable map from raw file to paper output
-2. Produce `data_inventory.qmd` and compile `data_inventory.pdf`
-3. Prune raw data files to the minimum required variable set
-4. Standardize all script paths and output directories
-5. Build `master.do`
-6. Write `README.md`
-7. Verify end-to-end reproducibility from a clean state
-
-Full skill definition: [`.claude/skills/replication-repo.md`](.claude/skills/replication-repo.md)
-
----
-
-## Repository Structure
-
+```bash
+sh scripts/install_codex_skills.sh
 ```
+
+That script symlinks each skill folder into `${CODEX_HOME:-$HOME/.codex}/skills/`, which matches Codex's personal skill-library layout. After installation, invoke a skill in Codex with `$replication-repo` or `$ref-check`.
+
+If your Codex environment already supports repo-local skills, the same skill folders remain readable in place. The installer exists so the repository remains usable even when repo-local discovery is not enabled.
+
+## Reliability Checks
+
+Run the repository validation script after edits:
+
+```bash
+sh scripts/validate_skills.sh
+```
+
+The validator checks:
+
+- required Claude and Codex skill files exist
+- Codex skill folders include `SKILL.md` and `agents/openai.yaml`
+- the README mentions both skills and both platforms
+- stray `.DS_Store` files are reported if they appear outside `.git/`
+
+## Repository Layout
+
+```text
 super-RA/
 ├── README.md
 ├── LICENSE
-└── .claude/
-    └── skills/
-        └── replication-repo.md       # available
-        # coding-agent.md             # planned
-        # lit-review.md               # planned
-        # peer-review.md              # planned
+├── .gitignore
+├── .claude/
+│   └── skills/
+│       ├── replication-repo.md
+│       └── ref-check.md
+├── codex-skills/
+│   ├── replication-repo/
+│   │   ├── SKILL.md
+│   │   └── agents/openai.yaml
+│   └── ref-check/
+│       ├── SKILL.md
+│       ├── agents/openai.yaml
+│       └── references/workbook-schema.md
+└── scripts/
+    ├── install_codex_skills.sh
+    └── validate_skills.sh
 ```
 
----
+## GitHub Use and Contributions
 
-## Contributing
+This repository is ready to be cloned, versioned, reviewed, and extended on GitHub.
 
-Contributions are welcome, including new skills, refinements to existing ones, and documentation of how skills have been applied in real projects.
+When contributing:
 
-**To propose a new skill**, open a GitHub Issue with:
-- The research task the skill addresses
-- The inputs it requires
-- The outputs it produces
-- Any institutional constraints or edge cases worth handling
+- keep each skill scoped to a single workflow
+- document inputs, outputs, and verification steps clearly
+- preserve platform parity when a skill exists for both Claude and Codex
+- avoid weakening safeguards in existing skills without explaining why
+- update the root README whenever a skill is added, removed, or materially changed
 
-**To submit a skill**, open a pull request with a new `.md` file in `.claude/skills/`.
+To propose a new skill, open an issue with:
 
-**Standards for new skills:**
-
-- Scope the skill to a single, well-defined task with a clear completion criterion.
-- Structure execution as explicit, ordered phases.
-- State clearly what the skill enforces and what decisions remain with the user.
-- List all required inputs and expected outputs up front.
-- Document edge cases and known pitfalls in a dedicated section.
-- The skill should ask the user for any required inputs at invocation, before beginning Phase 1.
-
----
+- the research task it addresses
+- the required inputs
+- the required outputs
+- the main failure risks or edge cases
 
 ## Author
 
-Developed and maintained by [Mamoor Ali Khan](https://mamooralikhan.com). All skills in this repository are original work by Mamoor Ali Khan.
+Developed and maintained by [Mamoor Ali Khan](https://mamooralikhan.com).
 
-Last updated: May 13, 2026
-
----
+Last updated: May 29, 2026
 
 ## License
 

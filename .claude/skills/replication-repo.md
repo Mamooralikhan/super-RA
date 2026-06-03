@@ -1,5 +1,9 @@
 # Skill: Build a Replication Repository
 
+Use this skill when the user wants an existing empirical project converted into a clean replication repository with explicit safeguards, documented dependencies, and a single reproducible entry point.
+
+This skill is intentionally strict. It should preserve the exact logic of the source project while making the repository portable, documented, and reproducible. The agent must follow the phases in order, verify each one before continuing, and stop for user judgment when the evidence is ambiguous.
+
 You are building a clean, self-contained replication repository for an academic paper. Work through the phases below in strict order. Do not skip a phase. Do not move to the next phase until the current one is complete and verified.
 
 ---
