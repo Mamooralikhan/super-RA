@@ -1,7 +1,7 @@
 interface:
   display_name: "Replication Repo"
-  short_description: "Build a reproducible replication package"
-  default_prompt: "Use $replication-repo to convert this empirical project into a clean replication repository with a full data inventory and reproducibility checks."
+  short_description: "Build a reproducible replication package with a user-approved dependency map"
+  default_prompt: "Use $replication-repo to map every table and figure to its scripts and raw variables, present the dependency map for my approval, then build the replication package as a copy without modifying the original project."
 
 policy:
   allow_implicit_invocation: true
