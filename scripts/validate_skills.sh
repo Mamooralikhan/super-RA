@@ -39,7 +39,7 @@ require_readme_text() {
   fi
 }
 
-skills="replication-repo ref-check"
+skills="replication-repo ref-check script-provenance"
 
 # 1. Required files
 require_dir ".claude/skills"
@@ -56,6 +56,10 @@ for s in $skills; do
 done
 require_file ".claude/skills/ref-check/references/workbook-schema.md"
 require_file "codex-skills/ref-check/references/workbook-schema.md"
+require_file ".claude/skills/script-provenance/references/templates.md"
+require_file "codex-skills/script-provenance/references/templates.md"
+require_file ".claude/skills/script-provenance/references/provenance-system.md"
+require_file "codex-skills/script-provenance/references/provenance-system.md"
 
 # 2. Frontmatter in every SKILL.md
 for f in .claude/skills/*/SKILL.md codex-skills/*/SKILL.md; do
@@ -82,6 +86,13 @@ if [ -f ".claude/skills/ref-check/references/workbook-schema.md" ] && \
             "codex-skills/ref-check/references/workbook-schema.md"; then
   err "platform drift: workbook-schema.md differs between Claude and Codex copies."
 fi
+for ref in templates provenance-system; do
+  a=".claude/skills/script-provenance/references/$ref.md"
+  b="codex-skills/script-provenance/references/$ref.md"
+  if [ -f "$a" ] && [ -f "$b" ] && ! cmp -s "$a" "$b"; then
+    err "platform drift: $ref.md differs between Claude and Codex copies."
+  fi
+done
 
 # 4. Operating Contract block must match the canonical copy verbatim
 extract_contract() {

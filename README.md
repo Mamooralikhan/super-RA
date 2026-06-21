@@ -46,6 +46,7 @@ Paired Claude and Codex skill files are kept byte-identical so the two platforms
 |-------|--------|-------|--------------|
 | `replication-repo` | Yes | Yes | Converts an empirical project into a clean replication package, with a user-approved dependency map before anything is changed, and without ever modifying the original project folder. |
 | `ref-check` | Yes | Yes | Audits a compiled paper's references against real source pages using your own browser session, and produces a color-coded review workbook for your verification. |
+| `script-provenance` | Yes | Yes | Standardizes R, Python, and Stata scripts with a common header and file-anchored paths, so a mixed team runs them without editing paths, and tracks package versions across the team to catch silent reproducibility breaks. |
 
 ## Skill Guide
 
@@ -102,6 +103,34 @@ Skill files: [Claude](.claude/skills/replication-repo/SKILL.md) | [Codex](codex-
 
 Skill files: [Claude](.claude/skills/ref-check/SKILL.md) | [Codex](codex-skills/ref-check/SKILL.md)
 
+### `script-provenance`: portable scripts and team-wide version tracking
+
+**What it does.** Solves two recurring pains on multi-member projects. First, paths: every script is made file-anchored, so the script's own location is the origin and climbing up uses `..` segments, with no absolute path hardcoded. The same file then runs unchanged on any machine and inside any Box or Dropbox mount, with no path edit on open. Second, package drift: each script records the package versions it ran with and warns, only when something changed, that results may be affected. A per-member ledger and an on-demand reconcile report show the whole team who is on which version and who is behind.
+
+**The path method.** The script file is the only anchor. To reach the project root, the path block climbs with `..` segments, then every other path is built downward from that root. This works cleanly in Python and, with the `this.path` package, in R. Stata cannot self-locate a do-file, so it anchors through a marker file and one editable root line, and the skill says so rather than pretending parity.
+
+**The version method.** Three layers. A baseline of blessed versions, the ones that produced the committed results. A per-member ledger, one file per teammate so shared folders never conflict, recording each environment. An offline in-script check that stays silent until a version changes, then prints one line and points to reconcile. A restoration layer (renv or groundhog for R, uv or a pinned requirements file for Python, vendored ado files for Stata) is what reinstalls the exact old versions when a drift is confirmed. The check is the tripwire; the restoration layer is the cure.
+
+**What you need in the folder before starting:**
+
+- the scripts to standardize (`.R`, `.py`, `.do`)
+- knowledge of the project root and the folder depth of the scripts
+- the author name to stamp, and a one-line purpose for any new script
+
+**How a run unfolds:**
+
+1. The agent confirms the mode (standardize existing scripts, initialize only, scaffold a new script, or reconcile), the languages present, and the author.
+2. It inventories every script: current paths, hardcoded absolute paths, headers, and packages.
+3. **Approval gate.** It writes `provenance_plan.md` with the header to add, the before-and-after of every path line, and the version-check call per script, then stops. No script is edited until you approve, since a wrong path rewrite can break a pipeline.
+4. After approval, it applies the header, the file-anchored path block, and the version check, changing nothing else in the script logic.
+5. It installs the `.provenance/` system, sets the baseline and the restoration lockfile, and verifies by running a script from outside its own folder and by triggering one simulated drift.
+
+**What you get:** standardized scripts that any teammate runs without editing a path, a `.provenance/` folder holding the baseline, the per-member ledgers, and the reconcile script, and dated reconcile reports under `.provenance/reports/` that show, package by package, who is on which version and who is behind the latest release.
+
+**Honest limits.** The check proves a version changed, not that a result changed, so it always says "verify." Stata records package versions only partially, because it does not expose reliable ado version numbers.
+
+Skill files: [Claude](.claude/skills/script-provenance/SKILL.md) | [Codex](codex-skills/script-provenance/SKILL.md)
+
 ## In Development
 
 More skills are being built on the same contract. Planned next:
@@ -145,17 +174,28 @@ super-RA/
 │   └── skills/
 │       ├── replication-repo/
 │       │   └── SKILL.md
-│       └── ref-check/
+│       ├── ref-check/
+│       │   ├── SKILL.md
+│       │   └── references/workbook-schema.md
+│       └── script-provenance/
 │           ├── SKILL.md
-│           └── references/workbook-schema.md
+│           └── references/
+│               ├── templates.md
+│               └── provenance-system.md
 ├── codex-skills/
 │   ├── replication-repo/
 │   │   ├── SKILL.md
 │   │   └── agents/openai.yaml
-│   └── ref-check/
+│   ├── ref-check/
+│   │   ├── SKILL.md
+│   │   ├── agents/openai.yaml
+│   │   └── references/workbook-schema.md
+│   └── script-provenance/
 │       ├── SKILL.md
 │       ├── agents/openai.yaml
-│       └── references/workbook-schema.md
+│       └── references/
+│           ├── templates.md
+│           └── provenance-system.md
 └── scripts/
     ├── install_claude_skills.sh
     ├── install_codex_skills.sh
@@ -174,7 +214,7 @@ super-RA/
 
 Developed and maintained by [Mamoor Ali Khan](https://mamooralikhan.com).
 
-Last updated: June 10, 2026
+Last updated: June 17, 2026
 
 ## License
 

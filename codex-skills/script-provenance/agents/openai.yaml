@@ -1,0 +1,7 @@
+interface:
+  display_name: "Script Provenance"
+  short_description: "Standardize research scripts with file-anchored paths and standard headers, and track package versions across a team"
+  default_prompt: "Use $script-provenance to standardize the scripts in this folder: add the author, purpose, and date header, convert every path to file-anchored form with no hardcoded absolute path, and install the package version provenance system with a per-member ledger and an on-demand reconcile report. Show me the plan and get my approval before editing any script."
+
+policy:
+  allow_implicit_invocation: true

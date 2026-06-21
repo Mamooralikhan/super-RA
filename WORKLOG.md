@@ -6,6 +6,43 @@ Conventions: dates are absolute (YYYY-MM-DD). Decisions are numbered per entry s
 
 ---
 
+## 2026-06-17: New skill script-provenance
+
+### Problem addressed
+
+On multi-member projects, two recurring pains block reproducible coding. First, paths: every `.do`, `.R`, or `.py` file has to be edited at the top to match each person's machine, worst of all when the project lives in a Box or Dropbox mount whose absolute prefix differs per user. Second, package drift: code written under one package version silently produces different results after an update, and teams have no shared record of who is on which version.
+
+### Approach
+
+Added a third skill, `script-provenance`, on the same contract and parity rules as the existing two. It standardizes scripts and installs a cross-team version provenance system.
+
+- **Paths.** File-anchored, not the `here` package. The script's own location is the origin; climbing up uses `..` segments; every other path is built downward from `ROOT`. Clean in Python (`__file__`) and R (`this.path`, the one dependency, deliberately not `here`). Stata cannot self-locate a do-file, so it anchors through a `.provenance/.projroot` marker plus one editable root line, stated honestly rather than faked.
+- **Header.** Author, purpose, created and updated dates, inputs, outputs. Author is never invented; purpose on a retrofit is inferred then confirmed.
+- **Version provenance.** Three layers. A baseline of blessed versions. A per-member ledger, one TSV file per member so shared folders never conflict. An offline in-script check that warns only when a version changed since the member's last run or differs from baseline, and points to reconcile. Plus a restoration layer (renv or groundhog, uv or pinned requirements, vendored ado) as the cure. An on-demand `reconcile` builds a package-by-member table and, with one optional network call, flags who is behind the latest release.
+
+### Files
+
+- `.claude/skills/script-provenance/SKILL.md` and `codex-skills/script-provenance/SKILL.md` (byte-identical), with `references/templates.md` and `references/provenance-system.md` mirrored on both platforms.
+- `codex-skills/script-provenance/agents/openai.yaml`.
+- `scripts/validate_skills.sh`: added `script-provenance` to the skills list, required-file checks for both reference files on both platforms, and a parity `cmp` for the references.
+- `README.md`: table row, full Skill Guide section, repository layout, date.
+
+### Decisions
+
+1. **File-anchored paths, not `here`.** The maintainer's stated method anchors to the script and climbs with `..`. Stock `here` anchors to a root marker via the working directory and climbs the other way. We follow the maintainer's method. The one R dependency is `this.path`, which is not `here`, taken because base R cannot self-locate a script across all run modes. Decided with the user via the question flow on 2026-06-17.
+2. **In-script check is offline and speaks only on change.** Scripts run many times a day, so a network call or per-run chatter was rejected. The latest-release lookup lives only in the on-demand reconcile.
+3. **One ledger file per member, identity from the home directory.** A shared Box or Dropbox folder gives every member the same files, so identity cannot live in the project. It is read from `~/.config/script-provenance/whoami`, falling back to username and host. This is the only artifact outside the project, optional, and created for the invoking user only with approval, to stay within the folder-scope contract.
+4. **Tripwire plus restoration, stated as separate things.** The check proves a version changed, not that a result changed; the wording is always "verify." The cure is the restoration lockfile. Both are built; neither is presented as the other.
+5. **Stata parity is partial and labeled.** Stata cannot self-locate a do-file and does not expose reliable ado versions. The skill records what it can and points to vendored ado files, rather than claiming parity with R and Python.
+
+### Open items
+
+- [ ] Run `scripts/validate_skills.sh` on a machine with `sh` to confirm the new parity and required-file checks pass before publishing. (The agent does not commit; the maintainer controls version control.)
+- [ ] The runtime helpers (`provenance.R`, `provenance.py`, `provenance.do`) and `reconcile.R` in `references/provenance-system.md` are skeletons written to be dropped into a real project. They have not been executed against a live multi-member setup. The skill's Phase 5 verifies them on the actual project at use time.
+- [ ] Decide whether `script-provenance` should become the single source of truth for the path standard, so `replication-repo` Phase 6 (which uses a `master.do` `$root` global) references it instead of carrying a parallel convention.
+
+---
+
 ## 2026-06-10: Operating contract, approval gate, browser briefing, format overhaul
 
 ### Problems identified (review of the repo as of commit 7a66edf)
