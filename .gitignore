@@ -1,1 +1,7 @@
+*.pyc
 .DS_Store
+__pycache__/
+
+# Local pilot material. Not part of the repository. Delete the folder before publishing.
+# Ignored so that an accidental `git add -A` cannot commit somebody's unpublished paper.
+TEST - PILOT - WHATEVER/

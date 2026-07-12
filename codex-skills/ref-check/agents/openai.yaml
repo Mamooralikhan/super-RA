@@ -1,7 +1,0 @@
-interface:
-  display_name: "Ref Check"
-  short_description: "Audit paper references through the user's own browser session"
-  default_prompt: "Use $ref-check to compile the paper, brief me on the browser operations and access prerequisites, check references against real source pages in my browser session, and build a review workbook for my verification."
-
-policy:
-  allow_implicit_invocation: true

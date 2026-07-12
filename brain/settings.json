@@ -1,0 +1,26 @@
+{
+  "claudeMdExcludes": [
+    "**/.claude/CLAUDE.md",
+    "**/.claude/rules/**"
+  ],
+  "permissions": {
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git init:*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/super_ra_notice.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
