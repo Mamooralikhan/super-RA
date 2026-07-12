@@ -130,6 +130,38 @@ Two conditions, and you need both:
 
 The body therefore runs from `\begin{document}` to `\appendix`, and the appendix from `\appendix` to `\end{document}`. If there is no `\begin{document}` at all, halt: the user has handed you a child file, not the main paper.
 
+## Rule 10: Catch every citation command, including the ones you have never heard of
+
+A citation command the extractor does not know about contributes **nothing**, and says nothing about it. The paper prints the reference; the report never mentions it. This is the same silent under-count as Rule 8, arriving through a different door, and Rule 7's assertions cannot catch it either: a citation the parser never saw cannot be reported as missing from the `.bib`.
+
+The old regex named eight natbib commands. **Fourteen of twenty-four real citation commands were invisible to it**, including:
+
+| Family | Invisible commands |
+|---|---|
+| natbib, capitalised | `\Citep`, `\Citet`, `\Citeauthor`. These are the **sentence-start** forms, so they are common. |
+| biblatex, all of it | `\parencite`, `\textcite`, `\autocite`, `\footcite`, `\supercite`, `\fullcite`, `\smartcite` |
+| apacite | `\citeA`, `\shortcite`, `\citeN` |
+| natbib | `\nocite{key}`, which **does** print that entry |
+
+A paper that mixes `\citep` with `\textcite` loses every `\textcite`, silently, and the run still looks clean.
+
+### The fix is not a longer list
+
+Enumerating every command that every citation package will ever ship is a game you lose on the next release. So do not try.
+
+**Match any macro whose name contains "cite", take its keys, and name the ones you do not recognise.** Missing a citation command then becomes structurally impossible. The worst case is that you *over*-collect: some unrelated macro's argument enters the key list, and Rule 7 catches it immediately and loudly by finding a "key" that is not in the `.bib`.
+
+That asymmetry is the whole argument. **Over-collecting fails noisily. Under-collecting fails silently.** When you must guess, always guess toward the noisy failure.
+
+An unrecognised command is therefore **reported, not dropped**. Its keys are already in the reference list. The report exists so a human can confirm it really is a citation command, and add it to the known list.
+
+### Details that bite
+
+- **Brace-aware, not regex-aware.** A key list is a brace group.
+- **`\nocite{*}` contributes no key.** It is a change of scope (Rule 1), not a citation of a work called `*`.
+- **Only the plural forms take a run of brace groups.** `\cites{a}{b}{c}` is real biblatex. But if you allow a run for every command, then `\citet{smith} {and others}` swallows the following brace group and invents a key called "and others".
+- **Print the census.** Show which citation commands the paper actually uses, and how often. If a user's paper is full of `\textcite` and the extractor does not say so, it is lying to them.
+
 ## Entry flags: the pipeline's own work items
 
 A `.bib` file has no editorial comments, so the extractor computes its own "this one is already known to be shaky" signals and passes them to the Assistant as **context for where to search hardest**:

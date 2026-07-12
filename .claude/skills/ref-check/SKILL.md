@@ -92,6 +92,9 @@ Get a go-ahead, then begin.
 - Split entries on a **leading-whitespace** `@`, not a bare line-initial `@`.
 - **Follow `\input` and `\include` recursively.** A paper split across `sections/*.tex` keeps its citations in the children, and an extractor that reads only the main file cannot see them. It does not error. It reports fewer references and a clean run.
 - **Find `\begin{document}` before you look for `\appendix`.** Papers define appendix macros in the preamble, so the first `\appendix` on the page is often inside a `\newcommand` body. Taking it splits the paper at the wrong place and reports every reference as appendix-only. Use a word boundary too, or `\appendixwithtoc` matches.
+- **Catch every citation command, not a list of favourites.** `\citep` is not the only one. `\Citep`, `\Citet` (the sentence-start forms), all of biblatex (`\parencite`, `\textcite`, `\autocite`, `\footcite`), apacite (`\citeA`, `\shortcite`), and `\nocite{key}` all print references. A named list will always be one package behind, so match **any** macro whose name contains "cite", collect its keys, and **report** any command you do not recognise. Over-collecting fails noisily and Rule 7 catches it; under-collecting fails silently and nothing does.
+
+**Report the citation-command census to the user.** Tell them which commands their paper uses and how often. If their paper is full of `\textcite` and you do not say so, you are hiding the thing most likely to be going wrong.
 
 The extractor must assert, and halt if any assertion fails: the expected key count, zero cited-but-missing-from-`.bib`, zero keys drawn from after `\end{document}`, and zero `\input`/`\include` targets that could not be resolved on disk.
 
