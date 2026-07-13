@@ -44,16 +44,58 @@ FORBIDDEN_DOMAINS = [
 ]
 
 
+def load_batch(path):
+    """Read a batch an LLM subagent wrote, and NORMALISE ITS SHAPE.
+
+    THE CONTRACT SAYS "write your JSON array". IT IS NOT ENOUGH, AND THIS IS NOT A COMPLAINT
+    ABOUT THE AGENTS. On the first cold run, two Associate subagents were given the identical
+    prompt, pointing at the identical contract, which says "Write your JSON array to the exact
+    path given in your prompt." One wrote a bare array. The other wrapped it in
+    {"batch": 2, "entries": [...]}, mirroring the shape of the INPUT file it had just read.
+
+    Neither hallucinated. Neither disobeyed. They simply landed on different readings of a
+    sentence, which is what independent agents do, and it is the same property that makes the
+    Associate tier worth having in the first place.
+
+    So the consumer normalises. BE LIBERAL IN WHAT YOU ACCEPT, STRICT IN WHAT YOU VALIDATE: the
+    top-level wrapper carries no meaning, and every check that matters (coverage, forbidden
+    domains, the unclicked gate) runs on the entries either way. Rejecting a batch of 17 good
+    fetches over a wrapper key would be pedantry with a real cost.
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for k in ("entries", "references", "records", "results"):
+            if isinstance(data.get(k), list):
+                return data[k]
+    sys.exit(f"FATAL: {Path(path).name} is neither a JSON array nor an object wrapping one.")
+
+
 def main():
     refs = {r["key"]: r for r in json.loads(REFS.read_text(encoding="utf-8"))["references"]}
 
     merged, errors, warnings = {}, [], []
 
-    for i in range(1, 5):
-        path = INDIR / f"batch_{i}.json"
-        if not path.exists():
-            sys.exit(f"FATAL: missing {path.relative_to(ROOT)} -- Assistant tier incomplete.")
-        for e in json.loads(path.read_text(encoding="utf-8")):
+    # DISCOVER the batches; never hardcode how many there are.
+    #
+    # This used to be `range(1, 5)`, which silently assumed the 66-reference paper this pipeline
+    # was built on. On a 35-reference paper the sensible split is 2 batches, and step 02 was duly
+    # adapted, at which point step 03 died looking for a batch_3.json that was never meant to
+    # exist. The batch count was defined in TWO places and they drifted the moment one was
+    # touched. One purpose, one place: the files on disk are the truth.
+    #
+    # Nothing is weakened by globbing, because the real gate is the COVERAGE check below: every
+    # key in 01_references.json must appear exactly once across the batches. A batch that is
+    # genuinely missing shows up there, by name, as an uncovered reference.
+    batch_paths = sorted(INDIR.glob("batch_*.json"),
+                         key=lambda p: int(re.search(r"(\d+)", p.stem).group(1)))
+    if not batch_paths:
+        sys.exit(f"FATAL: no batch_*.json in {INDIR.relative_to(ROOT)} -- Assistant tier has not run.")
+
+    for path in batch_paths:
+        i = int(re.search(r"(\d+)", path.stem).group(1))
+        for e in load_batch(path):
             key = e.get("key")
             if key in merged:
                 errors.append(f"{key}: appears in more than one batch")

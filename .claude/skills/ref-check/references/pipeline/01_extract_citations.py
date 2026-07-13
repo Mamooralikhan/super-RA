@@ -475,6 +475,27 @@ def main():
     # sit in a child, so this is checked only after the children are spliced in.
     nocite_all = bool(re.search(r"\\nocite\s*\{\s*\*\s*\}", body_text + "\n" + appx_text))
 
+    # The paper's OWN bibliography style. Step 06 renders the report through this exact .bst, so
+    # the author sees their references in the format their paper actually prints, not in some
+    # house format we invented. Read it from the paper; never assume one.
+    live_all = "\n".join(strip_tex_comments(lines[: end_idx + 1]))
+    style_m = re.search(r"\\bibliographystyle\s*\{([^}]*)\}", live_all)
+    bib_style = style_m.group(1).strip() if style_m else None
+
+    # biblatex has NO \bibliographystyle. It is configured in the package options and driven by
+    # biber, so a missing style line does not mean the paper is styleless: it means we are looking
+    # for the wrong thing. Detect it explicitly rather than silently reporting "no style found".
+    engine = "bibtex"
+    if re.search(r"\\usepackage(?:\[[^\]]*\])?\s*\{[^}]*biblatex[^}]*\}", live_all) \
+            or re.search(r"\\addbibresource\s*\{", live_all) \
+            or re.search(r"\\printbibliography", live_all):
+        engine = "biblatex"
+        bl = re.search(r"\\usepackage\[([^\]]*)\]\s*\{[^}]*biblatex", live_all)
+        if bl:
+            opt = re.search(r"\bstyle\s*=\s*([\w-]+)", bl.group(1))
+            if opt:
+                bib_style = bib_style or opt.group(1)
+
     body_keys, body_cmds = scan_citations(body_text)
     appx_keys, appx_cmds = scan_citations(appx_text)
     all_live = body_keys + appx_keys
@@ -545,6 +566,9 @@ def main():
             "source_files": files_read,
             "tex_bytes": tex_path.stat().st_size,
             "bib_bytes": sum(b.stat().st_size for b in bib_paths),
+            # e.g. "aer", "apsr", "chicago", "plainnat". Step 06 renders through this real .bst.
+            "bibliography_style": bib_style,
+            "bibliography_engine": engine,     # "bibtex" or "biblatex"
         },
         "nocite_all": nocite_all,
         "note": "READ-ONLY inputs. This pipeline reports; it does not fix.",
@@ -618,6 +642,23 @@ def main():
     flagged = Counter(f for r in records for f in r["entry_flags"])
     print(f"Entry flags            : {dict(flagged)}")
     print(f"\nWrote {out_path}  ({len(records)} references)")
+
+    # THE REPORT-FORMAT PREFLIGHT. Run it HERE, before a single reference is fetched.
+    #
+    # If the report is going to fall back to a generic citation format, the user must be told NOW,
+    # not discover it in the finished report an hour later. By then their only choices are to
+    # accept it or redo the run, and a fallback nobody offered them a chance to prevent is a
+    # fallback they will rightly resent. Finding out costs one `which bibtex`. There is no excuse
+    # for learning it late.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import bst_render
+        info = bst_render.preflight(bib_style, [str(main_dir), "."], engine)
+        bst_render.report_preflight(info)
+        if not info["can_render"]:
+            print("  STOP HERE and put this to the user before running the tiers.\n")
+    except Exception as exc:
+        print(f"\n  (could not check report formatting: {exc.__class__.__name__})")
 
 
 if __name__ == "__main__":

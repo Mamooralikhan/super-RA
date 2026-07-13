@@ -127,6 +127,18 @@ POSITIVE_CONFIRMATION = (
     "own preferred form", "the bib's form is the fuller", "conventional citation year",
     "no 'upgrade' to report", "not a defect", "match the source's first",
     "are the first ten in the authoritative order", "in the bib's order",
+    # ---- ADDED ON THE FIRST COLD RUN, AFTER THE REGRESSION SUITE CAUGHT A LIVE FALSE ALARM ----
+    # The Associate's natural way of saying "this entry is fine" is "No discrepancy: all fields
+    # match the source exactly." That sentence contains no word from the exclusion list, so the
+    # classifier read it as a SUBSTANTIVE FINDING and promoted five hand-confirmed-correct entries
+    # to 'major'. Same negation bug as the original, wearing different words.
+    #
+    # NOTE WHAT IS *NOT* ADDED HERE. A bare "is correct as" would look like a sensible catch-all
+    # and would be a disaster: gottlieb2016men's finding reads "the year is correct as the
+    # article's ONLINE-FIRST date, BUT the pagination is print-only", which is a REAL defect. A
+    # loose pattern would silently clear it. Match the affirmation, never the adjective.
+    "no discrepancy", "immaterial", "cosmetic naming variant", "correct as far as it goes",
+    "consistent with, not contradictory",
 )
 
 # Real but cosmetic: worth listing in the report, not worth the author's decision time.

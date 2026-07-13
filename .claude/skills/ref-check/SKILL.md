@@ -75,8 +75,23 @@ Tell the user:
 
 Ask them:
 
-- the **author name** to put on the report byline (see Attribution). Ask. Never guess it, and never ship a report without it.
 - whether any entries are deliberate choices they do not want "corrected", such as a specific edition, or a working-paper version they mean to cite
+
+### Tell them NOW if the report cannot print in their own style
+
+Step 01 runs a **preflight** and prints a `REPORT FORMATTING` block. Read it out to the user, and **do it before the tiers run, not after.**
+
+The report renders every citation through the paper's own `.bst`. Sometimes it cannot: the paper uses biblatex (which has no `\bibliographystyle` at all), or declares a `.bst` that is not on the machine, or BibTeX is not installed. In those cases the report falls back to a generic citation format.
+
+**A fallback the user was never given a chance to prevent is a fallback they will rightly resent.** Discovering it in the finished report, an hour and sixty web fetches later, leaves them with only two bad options: accept it, or do the whole thing again.
+
+So say it plainly, up front, and say three things:
+
+1. **What will happen**: references will print in a generic format, not the paper's own.
+2. **What it does not affect**: not one finding. Every error is still found and every link still checked. It changes only how citations are *typeset* in the report.
+3. **What they can do**: the preflight prints the remedies. Install BibTeX; drop the `.bst` next to the paper; or simply name a style they do have. **Any of these needs only step 06 re-run. No reference is re-fetched, and nothing is lost.**
+
+Then ask whether they want to fix it now or proceed with the generic format. Either answer is fine. Being surprised later is not.
 
 Get a go-ahead, then begin.
 
@@ -105,6 +120,18 @@ Use `references/pipeline/01_extract_citations.py` as the starting point. It enco
 ## Step 2: Tier 1, the Assistant
 
 Subagents. **Sequential, never concurrent.** Roughly 17 entries each. Contract: `references/methodology-assistant.md`.
+
+### Do not restate the output schema in the subagent prompt. Point at the contract.
+
+**This is a real failure, made on the first cold run of this skill, by the agent that wrote it.**
+
+The prompt said "read your contract and follow it exactly", and then helpfully restated the output schema in its own words. The two disagreed. The subagent followed the prompt, because the prompt was closer. It emitted `url` / `metadata` / `found` inside a `{"references": [...]}` wrapper, while `methodology-assistant.md` specifies `primary_link` / `fetched_metadata` / `not_found` as a bare JSON array, which is what `03_collect_assistant.py` actually consumes. Eighteen references were fetched perfectly and written in a shape nothing downstream could read.
+
+Nobody hallucinated. Nobody disobeyed. **A second copy of a spec is a spec that will drift**, and the moment it drifts, the copy nearest the agent wins.
+
+So: give the subagent the **path to the contract, the path to its input, the path to its output, and the two unbreakable rules.** Let the contract carry the schema. If you find yourself typing a field name into the prompt, stop.
+
+The same applies to the Associate in Step 3.
 
 The Assistant **fetches and records**. It does not reason, judge, improve, or upgrade. Its source universe is **closed**:
 
@@ -186,6 +213,23 @@ Three defences, all required:
 
 ## Step 5: The Reports
 
+### References print in the paper's OWN bibliography style
+
+The report reads `\bibliographystyle{...}` out of the paper and renders **every citation through that exact `.bst`**, by driving BibTeX itself. If the paper declares `aer`, the report prints in AER. If it declares `apsr` or `chicago`, it prints in those. This costs no LaTeX compile: BibTeX needs only a synthetic `.aux` naming the style, the data, and the keys.
+
+**Do not reimplement a citation style.** The temptation is to hand-write an AER formatter, then an APSR one, and so on. It is the wrong move and it gets worse with every style added: a hand-rolled formatter that is subtly wrong makes a **correct** entry look **wrong**, which is the precise disease this pipeline exists to cure. We support every style the user has installed by supporting none of them ourselves.
+
+**Render every reference in its own BibTeX run.** This is not paranoia, and two runs (one per column) are not enough. A bibliography style formats each entry *in the light of its neighbours*, which is right for a bibliography and poison for a report:
+
+- **`\bysame`.** When consecutive entries share a leading author, the style suppresses the repeated name (the "----" convention). On the pilot, `jayachandran2015genderroots` sorted immediately before `jayachandranvoena2026`, and the latter rendered as **"and Alessandra Voena"** with the first author simply gone.
+- **Year disambiguation.** Two entries by the same authors in the same year become `2016a` and `2016b`, inventing a suffix the paper does not print.
+
+Both are the style file behaving **correctly**. In a bibliography a row is read in the context of its neighbours; **in a report, every row is read alone, so every row must be formatted alone.**
+
+**The fallback is not optional.** `ref-check` promises it needs no LaTeX install, and that promise stands. If BibTeX is absent or the `.bst` cannot be found, fall back to a generic format and **say so in the report**. A report that silently changes format is worse than one that never offered the feature.
+
+### The two reports
+
 Two HTML reports, rendered by **one script from one JSON**, so they cannot disagree with each other:
 
 - **Audit trail**, four columns: Original, Assistant, Associate, PI. Every claim carries the link that was actually fetched.
@@ -199,15 +243,17 @@ Layout rules are in `references/report-schema.md` and are not optional:
 - **Exactly one `position: sticky` element**, the `<thead>`. Two stickies with a hardcoded offset break the moment the first one's real height differs from the assumed one.
 - **No scroll container.** Do not put the table in a `max-height` and `overflow: auto` pane. That turns a document into an inbox: the reader scrolls the page and nothing moves, scrolls the pane and loses their place. It was built that way once and rejected in testing. If a change seems to need a scroll pane, the change is wrong. Shorten the rows instead.
 
-## Attribution
+## Attribution: the super-RA mark
 
-Every report carries a byline stating the **date**, the **purpose** of the document, and the **attribution**:
+Every report carries the same fixed mark. It states the **date**, the **purpose** (which paper was audited against which bibliography), and three roles, named separately because naming them separately is simply what is true:
 
-- the **author** of the paper, which is the person running this skill. **Ask for the name. Never guess it, and never omit it.** Shipping a report with a missing byline element because its value was not to hand is a failure, not a graceful degradation. `06_render.py` takes `--author` as a required argument and refuses to run without it, for exactly this reason.
-- a credit to `super-RA`, https://github.com/Mamooralikhan/super-RA
-- a plain disclosure that **Claude Code** was used, naming the model.
+- **super-RA** supplies the method. Credit it, with https://github.com/Mamooralikhan/super-RA and its creator **Mamoor Ali Khan**, https://mamooralikhan.com.
+- **Claude Code** executes the run. Disclose it plainly, naming the model. The use of AI is never hidden.
+- **The author of the paper decides.** super-RA reports; it never edits the `.tex` or the `.bib`, and the author remains the final verifier.
 
-State the division of labour honestly: the author directs the work and makes the decisions, and the agent executes.
+**The mark is a tool credit, not a claim of authorship over the user's paper, and that distinction is load-bearing.** Someone else will install super-RA and run this on their own bibliography, then send the report to their co-authors. It must credit the method without implying that super-RA's creator wrote their analysis.
+
+Because the mark is fixed, there is **nothing to ask the user for and nothing to forget.** `06_render.py` no longer takes an `--author` argument. It used to take one and die without it, which was the right fix for the wrong problem: the real failure was a byline with a hole in it, and a fixed mark cannot have one.
 
 ## What This Skill Does Not Do
 

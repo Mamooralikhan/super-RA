@@ -104,6 +104,8 @@ Skill file: [.claude/skills/replication-repo/SKILL.md](.claude/skills/replicatio
 
 **Honest limits.** A paywalled page that refuses an automated fetch is *not* evidence that a reference is false; those entries are corroborated at a second authoritative source and labelled `blocked_corroborated`, so you can see that nobody actually loaded the page. And `not found` is reported as not found, never quietly replaced with a plausible guess.
 
+**Your references, in your own style.** The report reads `\bibliographystyle{...}` out of your paper and renders every citation through that exact `.bst`, by driving BibTeX itself. If your paper prints in AER, the report prints in AER; the same goes for APSR, Chicago, or anything else you have installed. Nothing is reimplemented, so nothing can be subtly wrong: it is your style file doing the formatting. If BibTeX is not on the machine, the report falls back to a generic format and says so, because it still needs no LaTeX install.
+
 **What you get:** two HTML reports, rendered by one script from one JSON so they cannot disagree with each other. An audit trail with four columns (Original, Assistant, Associate, PI) showing where the tiers disagreed, and a red/green comparison of what needs changing and why. Both carry a hygiene panel covering duplicate `.bib` keys, which of them actually print, and how many entries are never cited.
 
 **Requires subagents**, so it is Claude only. The Associate's independence from the Assistant is the anti-hallucination mechanism, and one agent reviewing its own work is not an independent check.

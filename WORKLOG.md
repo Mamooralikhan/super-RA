@@ -106,11 +106,80 @@ A second, unrelated paper (a field experiment, ~200k of `.tex`, a 2,035-entry Zo
 - **Rule 8 at full stretch:** 72 `.tex` files resolved (71 children), zero unresolved.
 - **Step 0 was necessary, not ceremonial.** The folder holds `main_new.tex`, `main_old.tex`, `extra_tables.tex` and more in `archive/`, and **`main_old.tex` also carries a `\documentclass`**. An agent that picks the first plausible `.tex` audits the wrong paper. The user had to be asked, and was.
 
+---
+
+## 2026-07-12: the first cold end-to-end run of /ref-check, and what it broke
+
+`/ref-check` was driven cold, all three tiers, on a real second paper (a field experiment on voting; `main_new.tex`, 35 printing references drawn from a 1,875-entry `.bib`). It had never been done. Everything below is a defect the run exposed. None of them would have been found by reading the code.
+
+### What the run found in the paper
+
+35 references verified. **1 critical, 4 major, 4 decisions, 1 minor, 25 clean.** All 73 source files byte-for-byte unchanged, verified rather than asserted.
+
+The critical one, `norms2023covid`, is the same shape as the World Bank finding on the first paper: the entry **fuses two different real records.** It gives the NBER working paper's exact title, the journal EDCC as the venue, and the year 2023. The PI checked both records at Crossref personally. NBER w28651 carries that title but is dated 2021 and never appeared in EDCC. The real EDCC article, by the same six authors, is titled *"Correcting Misperceptions about Support for Social Distancing to Combat COVID-19"* and printed in 2024, 73(1), 221-242. **The combination as cited exists nowhere.** A compile would never reveal it.
+
+### The defects the run exposed in the skill itself
+
+**D2026-07-12c.1. THE REGRESSION SUITE CAUGHT A LIVE FALSE ALARM, AND IT WOULD HAVE SHIPPED.**
+This is the finding that justifies the whole day. The Associate's natural phrasing for "this entry is fine" is *"No discrepancy: all fields match the Crossref record exactly."* That sentence contains no phrase from `POSITIVE_CONFIRMATION`, so the classifier read it as a **substantive finding** and promoted **five entries the PI had personally confirmed as correct** to `major`.
+
+It is the D5 negation bug again, in words nobody anticipated. And the suite that caught it **could not have caught it yesterday**: it shipped with empty ground-truth lists and passed vacuously. The gate added this morning is what turned a decoration into a check, and the check fired on its first live run and stopped the report.
+
+The fix adds `"no discrepancy"` and four siblings to the exclusion list. Note what is deliberately **not** added: a bare `"is correct as"` would look like a sensible catch-all and would be a disaster, because `gottlieb2016men`'s finding reads *"the year is correct as the article's ONLINE-FIRST date, BUT the pagination is print-only"*, which is a real defect. **Match the affirmation, never the adjective.**
+
+**D2026-07-12c.2. Do not restate the subagent's output schema in the prompt. Point at the contract.**
+The prompt said "read your contract and follow it exactly", then helpfully restated the schema in its own words. The two disagreed. The subagent followed the prompt, because the prompt was nearer. Eighteen references were fetched perfectly and written in a shape nothing downstream could read. Nobody hallucinated and nobody disobeyed: **a second copy of a spec is a spec that will drift**, and when it drifts, the copy closest to the agent wins.
+
+**D2026-07-12c.3. An LLM subagent will not reliably hit an exact JSON shape, however clearly you specify it. Normalise on read.**
+Both Associate contracts say "Write your JSON array." Two subagents, identical prompt, identical contract: one wrote a bare array, the other wrapped it in `{"entries": [...]}`, mirroring its input file. A third divergence nested every added field under an `"associate": {...}` sub-object. None of this is disobedience; it is two defensible readings of one sentence, and it is the same independence that makes the Associate tier worth having.
+
+So the consumers now normalise: **be liberal in what you accept, strict in what you validate.** The wrapper carries no meaning, and every check that matters runs on the entries either way.
+
+**D2026-07-12c.4. Overlay, do not trust.** Step 04 was rebuilding each record from whatever the Associate echoed back. One subagent dropped the `assistant` sub-record while reshaping, at which point the unclicked gate read a missing `not_found` as False and **falsely accused `bhavnani08` of reaching the PI unclicked**, when it was correctly recorded as `no_link`. A false accusation manufactured by a schema mismatch is precisely the disease this pipeline exists to cure. Step 04 now takes step 03's record as authoritative and overlays only the fields the Associate actually owns.
+
+**D2026-07-12c.5. The batch count lived in two places.** `02_make_batches.py` had `N_BATCHES`; `03_collect_assistant.py` hardcoded `range(1, 5)` and `04` hardcoded `(1, 2)`, both assuming the 66-reference paper. Adapting one for a 35-reference paper left the others hunting for files that were never meant to exist. Both now discover the batches on disk. One purpose, one place.
+
+**D2026-07-12c.6. The report byline is a fixed super-RA mark, not a name to ask for.**
+`06_render.py` used to take `--author` as a required argument and die without it. That was the right fix for the wrong problem. The real failure was a byline with a hole in it, and **a fixed mark cannot have one.** Every report now carries super-RA, its creator Mamoor Ali Khan (mamooralikhan.com), the repository, and a plain disclosure that Claude Code executed the run. The three roles are named separately because that is what is true: super-RA supplies the method, Claude Code executes, and **the author of the paper decides.** A tool mark must never read as authorship over someone else's bibliography.
+
+**D2026-07-12c.7. The report prints in the PAPER'S bibliography style, and we reimplement nothing.**
+The report rendered citations in a house format we invented: every author inverted, the year in parentheses. No journal prints that. An author had to translate the report back into their own bibliography before they could act on it, and a "corrected" line they cannot recognise is a line they will not trust.
+
+The obvious fix is to hand-write an AER formatter, then an APSR one, then Chicago. That is the wrong move, and it gets worse with each style added: **a hand-rolled formatter that is subtly wrong makes a correct entry look wrong**, which is exactly the disease this pipeline exists to cure.
+
+So nothing is reimplemented. `01` reads `\bibliographystyle{...}` out of the paper, and `bst_render.py` drives **BibTeX itself** over the author's real `.bst`. No LaTeX compile is needed: BibTeX wants only a synthetic `.aux` naming the style, the data, and the keys. `aer.bst` produces AER, `apsr.bst` produces APSR, and we support every style the user has installed by supporting none of them ourselves. Where BibTeX is absent, the report falls back to the generic format **and says so**, so the promise that `ref-check` needs no LaTeX install still holds.
+
+**D2026-07-12c.8. Every reference must be rendered in its OWN BibTeX run.**
+Two runs (one per column) were not enough, and finding out why was the whole lesson. **A bibliography style formats each entry in the light of its neighbours.** That is correct for a bibliography and poison for a report:
+
+- **`\bysame`.** When consecutive entries share a leading author the style suppresses the repeated name. `jayachandran2015genderroots` sorted immediately before `jayachandranvoena2026`, so the latter rendered as **"and Alessandra Voena"**, with "Jayachandran, Seema" simply gone. Splitting the columns did not help, because two *different* references can share a first author.
+- **Year disambiguation.** Two entries by the same authors in the same year become `2016a` and `2016b`, inventing a suffix the paper does not print.
+
+Both artifacts are the style file behaving **correctly**. The principle underneath: **in a bibliography a row is read in the context of its neighbours; in a report, every row is read alone, so every row must be formatted alone.** One entry, one run, no neighbours. It costs milliseconds and buys a guarantee instead of a hope.
+
+A third bug fell out of the same work: `_parse_bbl` used `[^{}]*` to match `\harvarditem`'s label group, which cannot cross a nested brace, so **any entry with an accent in an author name silently vanished from the report** while every unaccented entry rendered fine. The same disease again, in a new file.
+
+**D2026-07-12c.9. A degraded output must be announced BEFORE the work, not discovered after it.**
+The report falls back to a generic citation format when it cannot use the paper's own style: the paper is biblatex (no `\bibliographystyle` exists at all), or names a `.bst` the machine does not have, or BibTeX is not installed. The first version simply did it, and mentioned it in the finished report.
+
+That is the wrong order. **A fallback the user was never given a chance to prevent is a fallback they will rightly resent.** Finding out at the end, after sixty web fetches, leaves two bad options: accept it, or redo the whole run.
+
+So step 01 now runs a **preflight** and says so up front, before a single reference is fetched. It costs one `which bibtex` and one `kpsewhich`; there was never an excuse for learning it late. It states three things, and the third is what makes it worth printing:
+
+1. what will happen (generic format),
+2. what it does **not** affect (not one finding; every error is still found and every link still checked; only the typesetting changes),
+3. **what the user can do**, with the remedies spelled out, and the crucial reassurance that **any of them needs only step 06 re-run. No reference is re-fetched and nothing is lost.**
+
+`06_render.py` gained `--style` so taking a remedy is one flag, not a new run. The report also prints the fallback notice in amber above the table, so a reader cannot mistake a generic rendering for how their paper actually prints, and then read a formatting difference as a data error.
+
+The general rule, and it outlives this file: **when the tool is about to do something less than it promised, say so while the user can still choose.**
+
 ### Open
 
-- **`/ref-check` has still never been driven cold through all three tiers.** Extraction is now exercised on two real papers, but the Assistant, Associate and PI tiers, the subagent gate, and batch sizing have not been run end to end by an agent following only the `SKILL.md`.
 - CI running `scripts/validate_skills.sh` on every push.
 - Whether `replication-repo` and `script-provenance` should adopt the `references/pipeline/` pattern and ship runnable code rather than prose.
+- The Assistant and Associate tiers have now been run on two papers. Batch sizing has not been tested on a very large bibliography (200+ printing references).
+- `bst_render.py` is exercised on `aer`, `apsr`, `chicago` and `plainnat`. A biblatex paper is **detected** and announced, and the user can supply a close BibTeX equivalent with `--style`, but biblatex's own styles are not rendered natively (that would need biber). Numeric styles are untested.
 
 ---
 

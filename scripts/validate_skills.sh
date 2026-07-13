@@ -78,7 +78,7 @@ require_file ".claude/skills/ref-check/references/methodology-assistant.md"
 require_file ".claude/skills/ref-check/references/methodology-associate.md"
 require_file ".claude/skills/ref-check/references/report-schema.md"
 for p in 01_extract_citations 02_make_batches 03_collect_assistant \
-         04_collect_associate 05_pi_review 06_render; do
+         04_collect_associate 05_pi_review 06_render bst_render; do
   require_file ".claude/skills/ref-check/references/pipeline/$p.py"
 done
 
